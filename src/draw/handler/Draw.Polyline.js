@@ -247,49 +247,18 @@ L.Draw.Polyline = L.Draw.Feature.extend({
 		this._markerCount = this._markers.length;
 		this._currentLatLng = latlng;
 
-		if (this.options.snapToAngle && this._markerCount > 1) {
-			if (this._currentPosition) this._updateSnapGuide(this._currentPosition);
-			var updateGuide = this._useSnapToAngle(newPos, latlng);
-			if (!updateGuide) return;
-			this._currentPosition = newPos;
-			// console.log(`%c UPDATE`, `color: green`);
-		} else {
-			// Update the guide line
-			this._updateGuide(newPos);
-		}
+		if (this.options.snapToAngle && this._markerCount > 1)
+			// Update the snapGuide line
+			this._updateSnapGuide(newPos, latlng);
+		// Update the guide line
+		else this._updateGuide(newPos);
+
 		this._updateTooltip(latlng);
 
 		// Update the mouse marker position
 		this._mouseMarker.setLatLng(latlng);
 
 		L.DomEvent.preventDefault(e.originalEvent);
-	},
-
-	_useSnapToAngle: function(newPos, latlng) {
-		var angleDelta = (this.options.snapToAngle && this.options.snapToAngle.delta) || 22.5;
-		// START CALCULATING ANGLE
-		var pointA = this._map.latLngToLayerPoint(this._markers[this._markerCount - 2].getLatLng());
-		var pointB = this._map.latLngToLayerPoint(this._markers[this._markerCount - 1].getLatLng());
-
-		var currentAngle = this._findAngle(pointA, pointB, newPos);
-		// console.log(`%c currentAngle ${currentAngle}`, `color: red`);
-		var currentDiff = this._round(currentAngle % angleDelta, 2);
-		// console.log(`%c currentDiff ${currentDiff}`, `color: yellow`);
-
-		// Update the mouse marker position
-		this._mouseMarker.setLatLng(latlng);
-		return currentDiff <= 0.85 || currentAngle >= 179.95;
-	},
-
-	_round: function(value, decimals) {
-		return Number(Math.round(value + 'e' + decimals) + 'e-' + decimals);
-	},
-
-	_findAngle: function(A, B, C) {
-		var AB = Math.sqrt(Math.pow(B.x - A.x, 2) + Math.pow(B.y - A.y, 2));
-		var BC = Math.sqrt(Math.pow(B.x - C.x, 2) + Math.pow(B.y - C.y, 2));
-		var AC = Math.sqrt(Math.pow(C.x - A.x, 2) + Math.pow(C.y - A.y, 2));
-		return (Math.acos((BC * BC + AB * AB - AC * AC) / (2 * BC * AB)) * 180) / Math.PI;
 	},
 
 	_vertexChanged: function(latlng, added) {
@@ -438,25 +407,57 @@ L.Draw.Polyline = L.Draw.Feature.extend({
 		}
 	},
 
-	_updateSnapGuide: function(newPos) {
-		var markerCount = this._markers ? this._markers.length : 0;
+	_updateSnapGuide: function(newPos, latlng) {
+		var updateGuide = this._useSnapToAngle(newPos, latlng);
+		if (!updateGuide) return;
 
-		if (markerCount > 0) {
-			newPos = newPos || this._map.latLngToLayerPoint(this._currentLatLng);
-			var lastPoint = this._map.latLngToLayerPoint(this._markers[markerCount - 1].getLatLng());
-			var changePos = {
-				x: newPos.x - lastPoint.x,
-				y: newPos.y - lastPoint.y
-			};
-			var guidingPoint = {
-				x: newPos.x + changePos.x,
-				y: newPos.y + changePos.y
-			};
+		newPos = newPos || this._map.latLngToLayerPoint(this._currentLatLng);
+		var lastPoint = this._map.latLngToLayerPoint(this._markers[markerCount - 1].getLatLng());
+		// TODO: should we limit the added length here by checking if it exceeds some value?
+		var guidingPoint = this._getGuidingPoint(newPos, lastPoint);
+		// draw the guide line
+		this._clearGuides();
+		this._drawGuide(lastPoint, guidingPoint);
+	},
 
-			// draw the guide line
-			this._clearGuides();
-			this._drawGuide(lastPoint, guidingPoint);
-		}
+	_getGuidingPoint: function(newPos, lastPoint) {
+		var changePos = {
+			x: newPos.x - lastPoint.x,
+			y: newPos.y - lastPoint.y
+		};
+
+		return {
+			x: newPos.x + changePos.x,
+			y: newPos.y + changePos.y
+		};
+	},
+
+	_useSnapToAngle: function(newPos, latlng) {
+		var angleDelta = (this.options.snapToAngle && this.options.snapToAngle.delta) || 22.5;
+		// START CALCULATING ANGLE
+		var pointA = this._map.latLngToLayerPoint(this._markers[this._markerCount - 2].getLatLng());
+		var pointB = this._map.latLngToLayerPoint(this._markers[this._markerCount - 1].getLatLng());
+
+		var currentAngle = this._findAngle(pointA, pointB, newPos);
+		var currentDiff = this._round(currentAngle % angleDelta, 2);
+
+		// Update the mouse marker position
+		this._mouseMarker.setLatLng(latlng);
+		return currentDiff <= 0.85 || currentAngle >= 179.95;
+	},
+
+	_round: function(value, decimals) {
+		return Number(Math.round(value + 'e' + decimals) + 'e-' + decimals);
+	},
+
+	/**
+	 * returns the angle between the last two points and the current position
+	 */
+	_findAngle: function(p1, p2, p3) {
+		var AB = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
+		var BC = Math.sqrt(Math.pow(p2.x - p3.x, 2) + Math.pow(p2.y - p3.y, 2));
+		var AC = Math.sqrt(Math.pow(p3.x - p1.x, 2) + Math.pow(p3.y - p1.y, 2));
+		return (Math.acos((BC * BC + AB * AB - AC * AC) / (2 * BC * AB)) * 180) / Math.PI;
 	},
 
 	_updateTooltip: function(latLng) {
