@@ -412,7 +412,7 @@ L.Draw.Polyline = L.Draw.Feature.extend({
 		if (!updateGuide) return;
 
 		newPos = newPos || this._map.latLngToLayerPoint(this._currentLatLng);
-		var lastPoint = this._map.latLngToLayerPoint(this._markers[markerCount - 1].getLatLng());
+		var lastPoint = this._map.latLngToLayerPoint(this._markers[this._markerCount - 1].getLatLng());
 		// TODO: should we limit the added length here by checking if it exceeds some value?
 		var guidingPoint = this._getGuidingPoint(newPos, lastPoint);
 		// draw the guide line
@@ -441,8 +441,6 @@ L.Draw.Polyline = L.Draw.Feature.extend({
 		var currentAngle = this._findAngle(pointA, pointB, newPos);
 		var currentDiff = this._round(currentAngle % angleDelta, 2);
 
-		// Update the mouse marker position
-		this._mouseMarker.setLatLng(latlng);
 		return currentDiff <= 0.85 || currentAngle >= 179.95;
 	},
 
