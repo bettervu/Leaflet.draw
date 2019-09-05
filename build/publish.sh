@@ -2,7 +2,7 @@
 
 VERSION=$(node --eval "console.log(require('./package.json').version);")
 
-npm test || exit 1
+# npm test || exit 1
 
 git checkout -b build
 
@@ -25,5 +25,5 @@ git push --tags -f
 
 npm publish
 
-git checkout master
+git checkout develop
 git branch -D build
